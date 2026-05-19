@@ -85,7 +85,7 @@ void Vec_set(Vec* self, size_t index, const void* value) {
         return; // invalid index handled by Vec_ref
     }
 
-    memcpy(index, value, self->item_size);
+    memcpy(indexPointer, value, self->item_size);
 }
 
 
