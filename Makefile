@@ -16,6 +16,7 @@ TARGET  = build/bin/myShell
 
 #index target, for executable, we depend on all the object files that are made by doing -o obj.o
 $(TARGET): $(OBJ)
+	@mkdir -p build/bin
 	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET) 
 
 #target for all the build/.o files, they depend on the respective src/.c files, and for each file $< resolves to that specific named flag
