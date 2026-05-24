@@ -2,7 +2,7 @@
 CC      := gcc
 
 # The options to use with the compiler
-CFLAGS  := -Wall -Wextra -g -Iinclude
+CFLAGS  := -Wall -Wextra -g -Iinclude -std=c11 -D_GNU_SOURCE
 
 # this syntax makes the variable src hold all the files inside src folder ending with .c
 SRC     = $(wildcard src/*.c)
@@ -12,7 +12,7 @@ OBJ1    = $(SRC:.c=.o)
 OBJ     = $(patsubst src/%.o, build/%.o, $(OBJ1))
 
 #this s tjhe name of the executable
-TARGET  = build/bin/myShell
+TARGET  = build/bin/myShell.out
 
 #index target, for executable, we depend on all the object files that are made by doing -o obj.o
 $(TARGET): $(OBJ)

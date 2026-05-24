@@ -1,6 +1,8 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include <stdlib.h>
+
 /**
  * @brief Structure defining the vector implementation. Basically a dynamic array capable of storing any datatype.
  *
@@ -16,13 +18,13 @@ typedef struct Vector
     //number of items it can currently store in its current state before realloc
     size_t capacity;
 
-    //the pointer to the start of the vector
+    //the pointer to the start of the vector i.e the dynamic space
     void* buffer;
 
 } Vector;
 
 /**
- * @brief Create a Vector object
+ * @brief Create a Vector object with already allocated buffer space
  *
  * @param itemsize The size of individual item
  * @param capacity Initial capacity
@@ -85,7 +87,15 @@ void vec_getItem(const Vector* self, size_t index, void* outAddress);
  * @param index
  * @param inAddress
  */
-void vec_setItem(const Vector* self, size_t index, void* inAddress);
+void vec_setItem(Vector* self, size_t index, void* inAddress);
 
+
+/**
+ * @brief Implementation of vec_setItem, but for the last element of the vecotr directly
+ *
+ * @param self
+ * @param inaddress
+ */
+void vec_pushBack(Vector* self, void* inAddress);
 
 #endif

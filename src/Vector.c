@@ -22,12 +22,19 @@ static void expandCapacity(Vector* self, size_t n) {
 }
 
 Vector vec_createVector(size_t itemsize, size_t capacity) {
-    Vector newVector = { itemsize, 0, capacity, calloc(capacity, itemsize) };
+    //stack variable created and initialized
+    Vector newVector = {
+        .itemSize = itemsize,
+        .length = 0,
+        .capacity = capacity,
+        .buffer = calloc(capacity, itemsize) };
     MEMORY_GUARD(newVector.buffer, __FILE__, __LINE__);
+    //returned by value
     return newVector;
 }
 
 void vec_deleteVector(Vector* self) {
+    
     free(self->buffer);
     self->buffer = NULL;
     self->length = 0;
@@ -52,10 +59,16 @@ void vec_getItem(const Vector* self, size_t index, void* outAddress) {
 
 
 void vec_setItem(Vector* self, size_t index, void* inAddress) {
+
     if (index >= self->capacity) {
         expandCapacity(self, index);
     }
     memcpy(vec_getItemAddress(self, index), inAddress, self->itemSize);
+    self->length = index + 1;
 
 }
 
+void vec_pushBack(Vector* self, void* inAddress) {
+    vec_setItem(self, self->length, inAddress);
+
+}
