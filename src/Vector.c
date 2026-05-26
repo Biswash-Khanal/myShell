@@ -12,7 +12,7 @@
  */
 static void expandCapacity(Vector* self, size_t n) {
 
-    if (n > self->capacity) {
+    if (n >= self->capacity) {
         self->buffer = realloc(self->buffer, n * 2 * self->itemSize);
         MEMORY_GUARD(self->buffer, __FILE__, __LINE__);
         self->capacity = n * 2;
@@ -34,7 +34,7 @@ Vector vec_createVector(size_t itemsize, size_t capacity) {
 }
 
 void vec_deleteVector(Vector* self) {
-    
+
     free(self->buffer);
     self->buffer = NULL;
     self->length = 0;
@@ -60,9 +60,8 @@ void vec_getItem(const Vector* self, size_t index, void* outAddress) {
 
 void vec_setItem(Vector* self, size_t index, void* inAddress) {
 
-    if (index >= self->capacity) {
-        expandCapacity(self, index);
-    }
+    expandCapacity(self, index);
+
     memcpy(vec_getItemAddress(self, index), inAddress, self->itemSize);
     self->length = index + 1;
 

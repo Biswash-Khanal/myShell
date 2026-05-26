@@ -24,6 +24,7 @@ Token token_create_word(char* string) {
 Token token_create_operator(TokenType tokenType) {
     Token newOperatorToken;
     newOperatorToken.type = tokenType;
+    newOperatorToken.value = "";
 
     switch (tokenType)
     {
