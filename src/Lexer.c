@@ -2,6 +2,7 @@
 #include "Token.h"
 
 #include <ctype.h>
+#include <stdio.h>
 
 int isOperator(char inputCharacter) {
     if (inputCharacter == '|' || inputCharacter == '<' || inputCharacter == '>' || inputCharacter == '&') {
@@ -13,7 +14,15 @@ int isOperator(char inputCharacter) {
 }
 
 int isCharacter(char inputCharacter) {
-    if (!isspace(inputCharacter) && inputCharacter != '\0' && isOperator(inputCharacter) != 1) {
+    // A character belongs to a regular word ONLY if it's:
+    // 1. Not whitespace
+    // 2. Not the string null terminator
+    // 3. Not an operator (| , < , > , &)
+    // 4. Not a quotation mark (")
+    if (!isspace((unsigned char)inputCharacter) &&
+        inputCharacter != '\0' &&
+        inputCharacter != '"' &&
+        isOperator(inputCharacter) != 1) {
         return 1;
     }
     else {
@@ -21,7 +30,7 @@ int isCharacter(char inputCharacter) {
     }
 }
 
-void lexer(char* inputstring, Vector* vector) {
+int lexer(char* inputstring, Vector* vector) {
     char* ptr = inputstring;
     Token newToken;
 
@@ -60,34 +69,61 @@ void lexer(char* inputstring, Vector* vector) {
             vec_pushBack(vector, &newToken);
             break;
 
-        default:
-            //default case is the WORD token case
-        {
-            //set a pointer to the start of the word
+        case '"': {
+            ptr++; // Step past the opening quote
+
+            // Handle Edge Case: Immediate empty quotes ("")
+            if (*ptr == '"') {
+                newToken = token_create_word(""); // Stores an empty string literal
+                vec_pushBack(vector, &newToken);
+                ptr++; // Step past the closing quote
+                continue;
+            }
+
             char* wordStart = ptr;
 
-            // iterate the pointer until a character that ends a word is found like a whitespace or an operator
+            // Search for the matching closing quote
+            while (*ptr != '"') {
+                // If we hit the end of the line without finding a closing quote
+                if (*ptr == '\0' || *ptr == '\n') {
+                    fprintf(stderr, "myshell: syntax error: unclosed quotation mark\n");
+                    return 0; // Failure status
+                }
+
+                ptr++; // Operators and spaces are allowed to safely bypass here as strings!
+            }
+
+            // Temporarily isolate the quoted string
+            char originalChar = *ptr;
+            *ptr = '\0';
+
+            newToken = token_create_word(wordStart);
+            vec_pushBack(vector, &newToken);
+
+            *ptr = originalChar; // Restore the closing quote character
+            ptr++;               // Step past the closing quote safely
+            continue;
+        }
+
+        default: {
+            //same logic as the quotation, just with added a=guards for whitepace
+            char* wordStart = ptr;
             while (isCharacter(*ptr)) {
                 ptr++;
             }
 
-            // Temporarily add \0 to terminate the word string while saving a backup of the original character
             char originalChar = *ptr;
             *ptr = '\0';
 
-            // Create and store the word token
             newToken = token_create_word(wordStart);
             vec_pushBack(vector, &newToken);
 
-            // Restore the original character
             *ptr = originalChar;
-
-            //Need to continue here, because the logic itself advanced the pointer appropriately already, else the pointer would advance 1 eextra time
             continue;
         }
-        break;
+               break;
         }
-
-        ptr++; // Moves to the next character for operators
+        ptr++;
     }
+    return 1; // Success status
 }

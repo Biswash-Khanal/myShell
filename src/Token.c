@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "Token.h"
+#include "Vector.h"
 #include "MemoryGuard.h"
 
 static char* OP_PIPE = "|";
@@ -58,3 +59,67 @@ void delete_token(Token* token) {
 
 }
 
+void freeTokenVector(Vector* tokenVector) {
+
+    //set a pointer to the start of the buffer
+    Token* ptr = vec_getItemAddress(tokenVector, 0);
+
+    //loop through each token and call its free function
+    for (size_t i = 0;i < tokenVector->length;i++) {
+
+        delete_token(ptr);
+
+        ptr++;
+    }
+
+    //now that individual tokens inside the buffer are freed, we can call he free vector function that frees the buffer and nulls the Vector struct
+    vec_deleteVector(tokenVector);
+
+}
+
+
+void printVectorBuffer(const Vector* vector) {
+    if (vector == NULL || vector->length == 0) {
+        printf("Vector Length = 0\n");
+        return;
+    }
+
+    // Cast the start of the raw void* buffer to a structural Token pointer
+    Token* ptr = vec_getItemAddress((Vector*)vector, 0);
+
+    printf("Vector Length = %lu: [ ", vector->length);
+
+    for (size_t i = 0; i < vector->length; i++) {
+        // Use clean enum labels instead of raw integers (0, 1, 2...)
+        switch (ptr->type) {
+        case WORD:
+            printf("WORD(\"%s\")", ptr->value);
+            break;
+        case REDIRECT_IN:
+            printf("REDIRECT_IN"); // Operators don't inherently need a string value printed
+            break;
+        case REDIRECT_OUT:
+            printf("REDIRECT_OUT");
+            break;
+        case REDIRECT_OUT_APPEND:
+            printf("REDIRECT_OUT_APPEND");
+            break;
+        case PIPE:
+            printf("PIPE");
+            break;
+        case BACKGROUND:
+            printf("BACKGROUND");
+            break;
+        default:
+            printf("UNKNOWN_TOKEN");
+            break;
+        }
+
+        // Structural formatting spacer
+        if (i < vector->length - 1) {
+            printf(" -> ");
+        }
+        ptr++;
+    }
+    printf(" ]\n");
+}

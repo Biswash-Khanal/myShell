@@ -8,8 +8,9 @@
  *
  * @param inputString The input string provided by the user
  * @param vector The vector where each tokens will be stored at
+ * @return 0 if error, 1 if success
  */
-void lexer(char* inputString, Vector* vector);
+int lexer(char* inputString, Vector* vector);
 
 /**
  * @brief returns 1 if character is an operator, 0 if not

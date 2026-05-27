@@ -7,32 +7,12 @@
 #include "Vector.h"
 #include "Lexer.h"
 
-/**
- * Frees all internal token strings and deletes the vector container.
- * Expects a pointer-to-pointer so it can safely nullify the caller's reference.
- */
-void freeTokenVector(Vector* tokenVector) {
 
-    //set a pointer to the start of the buffer
-    Token* ptr = vec_getItemAddress(tokenVector, 0);
-
-    //loop through each token and call its free function
-    for (size_t i = 0;i < tokenVector->length;i++) {
-
-        delete_token(ptr);
-
-        ptr++;
-    }
-
-    //now that individual tokens inside the buffer are freed, we can call he free vector function that frees the buffer and nulls the Vector struct
-    vec_deleteVector(tokenVector);
-
-}
 
 /**
 * Iterates through the vector and prints out a scannable token breakdown.
 */
-void printVectorBuffer(const Vector* vector);
+
 
 
 int main(void) {
@@ -47,13 +27,13 @@ int main(void) {
 
     //the main loop. Each loop: gets the line from terminal, check for errors, lexes and prints the results
     while (1) {
-        // 1. Shell Prompt like $>
+        // 1. Shell Prompt
         printf("$$myshell> ");
 
-        // 2. Read Input from terminal to the inputbuffer with getline
+        // 2. Read Input
         charactersRead = getline(&inputBuffer, &capacity, stdin);
 
-        // 3. Error checking, getline either returns the number of elements or -1 for problems
+        // 3. Error checking for terminal stream
         if (charactersRead == -1) {
             if (feof(stdin)) {
                 printf("\nExiting shell cleanly.\n");
@@ -67,15 +47,21 @@ int main(void) {
         // 4. Initialize Vector Container on Stack
         Vector tokenVector = vec_createVector(sizeof(Token), 8);
 
-        // 5. Lexically Analyze Input
-        lexer(inputBuffer, &tokenVector);
+        // 5. Lexically Analyze Input and act directly on its status signal
+        if (lexer(inputBuffer, &tokenVector)) {
+            // SUCCESS CASE: Print the debug breakdown
+            printVectorBuffer(&tokenVector);
 
-        // 6. Debug output
-        printVectorBuffer(&tokenVector);
+            // Future step: parse_and_execute(&tokenVector);
+        }
+        else {
+            // FAILURE CASE: The lexer already printed the syntax error message to stderr.
+            // We do nothing else here, allowing execution to slide naturally into 
+            // the  cleanup down below.
+        }
 
-        // 7. Housekeeping: Free current iteration's tokens
-        // We pass the address of a pointer so freeTokenVector can cleanly zero it out
-
+        // 6. : No matter what happened above, the vector container 
+        // was born on line 4, so it is unconditionally destroyed right here.
         freeTokenVector(&tokenVector);
     }
 
@@ -84,55 +70,6 @@ int main(void) {
     inputBuffer = NULL;
 
     return 0;
-    /**
-     * Frees all internal token strings and deletes the vector container.
-     * Expects a pointer-to-pointer so it can safely nullify the caller's reference.
-     */
+
 }
 
-
-void printVectorBuffer(const Vector* vector) {
-    if (vector == NULL || vector->length == 0) {
-        printf("Vector Length = 0\n");
-        return;
-    }
-
-    // Cast the start of the raw void* buffer to a structural Token pointer
-    Token* ptr = vec_getItemAddress((Vector*)vector, 0);
-
-    printf("Vector Length = %lu: [ ", vector->length);
-
-    for (size_t i = 0; i < vector->length; i++) {
-        // Use clean enum labels instead of raw integers (0, 1, 2...)
-        switch (ptr->type) {
-        case WORD:
-            printf("WORD(\"%s\")", ptr->value);
-            break;
-        case REDIRECT_IN:
-            printf("REDIRECT_IN"); // Operators don't inherently need a string value printed
-            break;
-        case REDIRECT_OUT:
-            printf("REDIRECT_OUT");
-            break;
-        case REDIRECT_OUT_APPEND:
-            printf("REDIRECT_OUT_APPEND");
-            break;
-        case PIPE:
-            printf("PIPE");
-            break;
-        case BACKGROUND:
-            printf("BACKGROUND");
-            break;
-        default:
-            printf("UNKNOWN_TOKEN");
-            break;
-        }
-
-        // Structural formatting spacer
-        if (i < vector->length - 1) {
-            printf(" -> ");
-        }
-        ptr++;
-    }
-    printf(" ]\n");
-}
