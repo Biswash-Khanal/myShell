@@ -28,3 +28,30 @@ typedef struct ASTNode {
     ASTNode* child_cmd;
     char* file_path;     // The parsed filename string pulled from a WORD token
 } ASTNode;
+
+
+/**
+ *@brief Create a ast node object
+ *
+ * @param nodeType The type of node
+ * @return ASTNode* The pointer to the created node, or null if error
+ */
+ASTNode* create_ast_node(ASTNodeType nodeType);
+
+/**
+ *@brief deletes individual node. Can be used independently but not recommended. used as a utility function for the delete_ast_node function.
+ * 
+ * @param node the node to be deleted 
+ * @return int 
+ */
+int delete_ast_node(ASTNode* node);
+
+
+/**
+ *@brief frees all the dependent nodes and then finally frees itself
+ *
+ * @param rootNode the pointer to the root node
+ * @return int
+ */
+int delete_ast_tree(ASTNode* rootNode);
+
