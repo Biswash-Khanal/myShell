@@ -15,7 +15,7 @@ typedef struct ASTNode {
 
     // --- CASE 1: If type == NODE_COMMAND ---
     // We swallow the values of multiple WORD tokens into a clean string array!
-    char** args;         // e.g., args[0] = "ls", args[1] = "-la", args[2] = "/tmp", args[3] = NULL
+    char** arg_values;         // e.g., args[0] = "ls", args[1] = "-la", args[2] = "/tmp", args[3] = NULL
     int arg_count;
 
     // --- CASE 2: If type == NODE_PIPE ---
@@ -23,7 +23,7 @@ typedef struct ASTNode {
     ASTNode* left;
     ASTNode* right;
 
-    // --- CASE 3: If type == NODE_REDIRECT_OUT / IN / APP ---
+    // --- CASE 3: If type == NODE_REDIRECT_OUT / IN / APP/ BACKGROUND ---
     // The node tracks the command being altered, and the file name string
     ASTNode* child_cmd;
     char* file_path;     // The parsed filename string pulled from a WORD token
@@ -39,19 +39,12 @@ typedef struct ASTNode {
 ASTNode* create_ast_node(ASTNodeType nodeType);
 
 /**
- *@brief deletes individual node. Can be used independently but not recommended. used as a utility function for the delete_ast_node function.
- * 
- * @param node the node to be deleted 
- * @return int 
+ *@brief Deletes/Frees the node passed to it. Root node pointer can be passed to it to recursively free the entire tree.
+ *
+ * @param node the node to be deleted
+ * @return  1 for success, 0 for error
  */
 int delete_ast_node(ASTNode* node);
 
 
-/**
- *@brief frees all the dependent nodes and then finally frees itself
- *
- * @param rootNode the pointer to the root node
- * @return int
- */
-int delete_ast_tree(ASTNode* rootNode);
 
