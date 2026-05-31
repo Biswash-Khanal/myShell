@@ -1,8 +1,10 @@
+#include <ctype.h>
+#include <stdio.h>
+
+
 #include "Vector.h"
 #include "Token.h"
 
-#include <ctype.h>
-#include <stdio.h>
 
 int isOperator(char inputCharacter) {
     if (inputCharacter == '|' || inputCharacter == '<' || inputCharacter == '>' || inputCharacter == '&') {

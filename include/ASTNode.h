@@ -1,3 +1,7 @@
+#ifndef ASTNODE_H
+#define ASTNODE_H
+
+
 typedef enum {
     NODE_COMMAND,       // Represents a full executable program with all its arguments
     NODE_PIPE,          // Represents the PIPE '|' operator link
@@ -47,4 +51,12 @@ ASTNode* create_ast_node(ASTNodeType nodeType);
 int delete_ast_node(ASTNode* node);
 
 
+/**
+ *@brief Prints out the entire ast tree for debugging and viewing the tree
+ *
+ * @param node The Pointer to the root node
+ * @param depth The spacing between the levels of nodes for better viewing
+ */
+void print_ast_tree(const ASTNode* node, int depth);
 
+#endif

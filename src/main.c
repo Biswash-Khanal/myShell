@@ -3,32 +3,29 @@
 #include <string.h>
 #include <unistd.h>
 
+
 #include "Token.h"
 #include "Vector.h"
 #include "Lexer.h"
-
-
-
-/**
-* Iterates through the vector and prints out a scannable token breakdown.
-*/
-
+#include "Parser.h"   
+#include "ASTNode.h"  
 
 
 int main(void) {
-    //inputbuffer to store the input from terminal. set it to null to make getline automatically alloc.
+    // inputbuffer to store the input from terminal. set it to null to make getline automatically alloc.
     char* inputBuffer = NULL;
 
-    //the capacity value for the getline. set to 0 to make getline automatically allocate appropriate size.
+    // the capacity value for the getline. set to 0 to make getline automatically allocate appropriate size.
     size_t capacity = 0;
 
-    //variable storing the return value of the getline function to check for the success/error
+    // variable storing the return value of the getline function to check for the success/error
     ssize_t charactersRead;
 
-    //the main loop. Each loop: gets the line from terminal, check for errors, lexes and prints the results
+    // the main loop. Each loop: gets the line from terminal, check for errors, lexes and prints the results
     while (1) {
         // 1. Shell Prompt
         printf("$$myshell> ");
+        fflush(stdout); // Forces prompt to appear immediately
 
         // 2. Read Input
         charactersRead = getline(&inputBuffer, &capacity, stdin);
@@ -47,21 +44,34 @@ int main(void) {
         // 4. Initialize Vector Container on Stack
         Vector tokenVector = vec_createVector(sizeof(Token), 8);
 
-        // 5. Lexically Analyze Input and act directly on its status signal
+        // 5. Lexically Analyze Input
         if (lexer(inputBuffer, &tokenVector)) {
-            // SUCCESS CASE: Print the debug breakdown
-            printVectorBuffer(&tokenVector);
+            // OPTIONAL DEBUG: Print the raw token vector layout
+            // printVectorBuffer(&tokenVector);
 
-            // Future step: parse_and_execute(&tokenVector);
+            // ==========================================
+            // NEW PARSER INTEGRATION STEP
+            // ==========================================
+            // Pass tokens into the recursive descent cascade 
+            ASTNode* root = parseInput(tokenVector);
+
+            if (root != NULL) {
+                printf("\n--- Generated Abstract Syntax Tree ---\n");
+                print_ast_tree(root, 1);
+                printf("--------------------------------------\n\n");
+
+                // Future step: execute_ast_tree(root);
+
+                // Deeply clear all allocated heap structures inside this tree
+                delete_ast_node(root);
+                root = NULL;
+            }
         }
         else {
             // FAILURE CASE: The lexer already printed the syntax error message to stderr.
-            // We do nothing else here, allowing execution to slide naturally into 
-            // the  cleanup down below.
         }
 
-        // 6. : No matter what happened above, the vector container 
-        // was born on line 4, so it is unconditionally destroyed right here.
+        // 6. Vector cleanup
         freeTokenVector(&tokenVector);
     }
 
@@ -70,6 +80,4 @@ int main(void) {
     inputBuffer = NULL;
 
     return 0;
-
 }
-

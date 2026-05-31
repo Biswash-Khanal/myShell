@@ -1,3 +1,7 @@
+#ifndef PARSER_H
+#define PARSER_H
+
+
 #include "ASTNode.h"
 #include "Vector.h"
 
@@ -8,27 +12,17 @@
  * @param tokenVector The vector to be parsed.
  *
  */
-void parseInput(Vector tokenVector);
+ASTNode* parseInput(Vector tokenVector);
 
 
 //the 4 worker functions
-
 /**
- *@brief Worker function that calls the other worker recursively. This function is responsible for properly parsing the background operator logics
+ *@brief The leaf parsing function. All other worker calls reaches here once. Responsivble for parsing the commands. returns the control back if not a word.
  *
  * @param tokenVector The token Vector
  * @param cursor  The pointer to the cursor integer from the entry point functoin
  */
-void parse_background(Vector tokenVector, int* cursor);
-
-
-/**
- *@brief Worker function that calls the other worker recursively. This function is responsible for properly parsing the pipeline operator logics
- *
- * @param tokenVector The token Vector
- * @param cursor  The pointer to the cursor integer from the entry point functoin
- */
-void parse_pipeline(Vector tokenVector, int* cursor);
+ASTNode* parse_commands(Vector tokenVector, size_t* cursor);
 
 /**
  *@brief Worker function that calls the other worker recursively. This function is responsible for properly parsing the Redicrection operators logics
@@ -36,12 +30,23 @@ void parse_pipeline(Vector tokenVector, int* cursor);
  * @param tokenVector The token Vector
  * @param cursor  The pointer to the cursor integer from the entry point functoin
  */
-void parse_redirection(Vector tokenVector, int* cursor);
+ASTNode* parse_redirection(Vector tokenVector, size_t* cursor);
 
 /**
- *@brief The leaf parsing function. All other worker calls reaches here once. Responsivble for parsing the commands. returns the control back if not a word.
+ *@brief Worker function that calls the other worker recursively. This function is responsible for properly parsing the pipeline operator logics
  *
  * @param tokenVector The token Vector
  * @param cursor  The pointer to the cursor integer from the entry point functoin
  */
-void parse_commands(Vector tokenVector, int* cursor);
+ASTNode* parse_pipeline(Vector tokenVector, size_t* cursor);
+
+/**
+ *@brief Worker function that calls the other worker recursively. This function is responsible for properly parsing the background operator logics
+ *
+ * @param tokenVector The token Vector
+ * @param cursor  The pointer to the cursor integer from the entry point functoin
+ */
+ASTNode* parse_background(Vector tokenVector, size_t* cursor);
+
+
+#endif

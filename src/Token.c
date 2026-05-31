@@ -2,9 +2,11 @@
 #include <string.h>
 #include <stdio.h>
 
+
 #include "Token.h"
 #include "Vector.h"
 #include "MemoryGuard.h"
+
 
 static char* OP_PIPE = "|";
 static char* OP_REDIRECT_IN = "<";

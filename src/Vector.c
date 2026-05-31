@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 
+
 #include "Vector.h"
 #include "MemoryGuard.h"
+
 
 /**
  * @brief Helper function to expand the capacity when the data in is bigger than current capacity. Not declared in Header as I dont want to make this function callable by the user. Instead its only used for internal purpose.
