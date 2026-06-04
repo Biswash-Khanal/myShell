@@ -9,6 +9,7 @@
 #include "Lexer.h"
 #include "Parser.h"   
 #include "ASTNode.h"  
+#include "Executor.h"
 
 
 int main(void) {
@@ -61,7 +62,7 @@ int main(void) {
                 printf("--------------------------------------\n\n");
 
                 // Future step: execute_ast_tree(root);
-
+                execute_ast_tree(root);
                 // Deeply clear all allocated heap structures inside this tree
                 delete_ast_node(root);
                 root = NULL;
@@ -71,8 +72,12 @@ int main(void) {
             // FAILURE CASE: The lexer already printed the syntax error message to stderr.
         }
 
+
+
         // 6. Vector cleanup
         freeTokenVector(&tokenVector);
+
+
     }
 
     // 8. Absolute Cleanup: Free the persistent line buffer created by getline
