@@ -25,7 +25,11 @@ int main(void) {
     // the main loop. Each loop: gets the line from terminal, check for errors, lexes and prints the results
     while (1) {
         // 1. Shell Prompt
-        printf("$$myshell> ");
+        char promptBuffer[1024];
+        if (getcwd(promptBuffer, sizeof(promptBuffer)) == NULL) {
+            perror("Error in getting current directory");
+        }
+        printf("$$myshell#%s>>", promptBuffer);
         fflush(stdout); // Forces prompt to appear immediately
 
         // 2. Read Input

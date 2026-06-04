@@ -8,6 +8,38 @@
 #include "Parser.h"
 
 /**
+ * @brief Recursive Descent Parsing Technique.
+ * Basic gist of the algorithm is, we first decide the operator precedence and priority. like if a+b*c+d, maybe we can have a rule to first do the additions and then multiply, or vice versa.
+ * In our case, the priority is kept simple for this first demo. I think it will be very complicated and ill never finish the project if i keep trying to improve before even finishing something.
+ * So, my operator priorities are simple
+ * Background operator happens at last no matter what, sub commands are not allowed to be background, in other words, only valid place for the background operator to be is at the end of the command. Anywhere else will be error. And basically the entire command before the & operator is now treated as the command to be ran in bacground.
+ * 
+ * Next is the Pipe operator. As the pipe operator is supposed to just take the output from one of the commands and pass it as the input into another command, its logical that among the remaining operator its the highest priority or the last one to be operated. 
+ * 
+ * Next, is the redirection operators. I like to call these pseudo operators, as its not really operating anything, all they do is change the default file stream pointers. However, logically, the F pointers are changed in order to redirect the input or the output stream FOR a COMMAND and so it makes sense this needs to happen AFTER a command is decoded. 
+ * 
+ * Finally, we have the WORDS, these are basically each seperate words. I have decided all commands will be nothing else but an array or strings. the first string being the main command name, or a subprogram and the rest being the arguments for it to function. **im saying I am doing all this but its all the actual practices, ive just toned then down and made them simpler for this simple learning project
+ * 
+ * How the parsing works, is basically we can converting the serial token vectors into a tree structure, the tree structure follows the following rules
+ * 
+ * for background operator, we make a background node, and store a pointer to the entire rest of the tree within it
+ * for pipe operator, we make a PIPE node, a left pointer and a right pointer, which respectively store the pointer to the sub command nodes 
+ * for redirection operator, we make the specific redirection node with a pointer to the node containing the actual command
+ * and finally we have the actual command node, that stores a sequence of valid words as its arguments and keeps track of the count as well
+ * 
+ * we can also observe from this explanation that this tree will have the command nodes as it's leaves. If present, redirection nodes will contain the command nodes, and so on until the top
+ * 
+ * Now, there are a lot of edge cases, error detections, sequence of tokens validation stuff for it to be functioning properly, however given the purpose of the project and not to be sidetracked, ive just plugged the edge cases and problems as they arise instead of thinking through and programming a general solution. So, that is a TODO
+ * 
+ * As to how the actual code is working, well we throw in the root node  into the parsing function, which is like an entry point, it will be responsible for starting the process of parsing, and when the process completes it can do some checks to verify everything worked smoothely. It can use the return values of the daughter functions and some other logics to figure out if everything went correctly. It also then passes the tokenvector to the parse_background function
+ * 
+ * parse_background function immediately calls the next in line function the parse_pipeline. And as we can see this pattern of calling the other function immediately carrys on until the final function that is the parse_command function. What this allows is at the start of parsing and infact in each step of parsing, RECURSIVELY, each token is always sure to at least visit the correct parsing function once. It will be hard to explain in words and long as well, but ive tried to comment and write the code clean enough so its very clear whats happening.
+ * 
+ * 
+ * basically, each level function when gets called, sets up the token into the proper node if the fuction matches the token type, else just returns a level up, allowing next in line function to check if the token type matches, and with this flow, we can also add problem chcking logics which makes sure if the command is valid it parses correctly, or if something is wrong, we can let the mother function parse_input know what went wrong and send error messages. Currently, i have not setup specific error checking and exact error messages, for now it will just display a generic error message if something went wrong.
+ */
+
+/**
  * @brief Helper to safely extract a type-safe Token pointer at the current cursor index.
  */
 static Token* get_token_pointer(Vector tokenVector, size_t* cursor) {

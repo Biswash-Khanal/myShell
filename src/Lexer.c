@@ -40,7 +40,7 @@ int lexer(char* inputstring, Vector* vector) {
 
         // Prtotect from all the spaces/tabs immediately
         // Protect \n and \0 so we dont blow past our main loop boundaries
-        if (isspace(*ptr) && *ptr != '\n') {
+        if (isspace(*ptr) && *ptr != '\n' && *ptr != '\0') {
             ptr++;
             continue; // Skip straight to the next loop step
         }
@@ -71,6 +71,7 @@ int lexer(char* inputstring, Vector* vector) {
             vec_pushBack(vector, &newToken);
             break;
 
+            //A bit long and complex case TODO: a seperate function just for this case
         case '"': {
             ptr++; // Step past the opening quote
 
@@ -91,11 +92,11 @@ int lexer(char* inputstring, Vector* vector) {
                     fprintf(stderr, "myshell: syntax error: unclosed quotation mark\n");
                     return 0; // Failure status
                 }
-
-                ptr++; // Operators and spaces are allowed to safely bypass here as strings!
+                // Operators and spaces are allowed to safely bypass here as strings!
+                ptr++;
             }
 
-            // Temporarily isolate the quoted string
+            // Temporarily set '\0' at the end of the word inside quotes, and pass the wordstart pointer so it treats the substring as the string
             char originalChar = *ptr;
             *ptr = '\0';
 
@@ -106,9 +107,11 @@ int lexer(char* inputstring, Vector* vector) {
             ptr++;               // Step past the closing quote safely
             continue;
         }
+                //END of CASE: '"'
+
 
         default: {
-            //same logic as the quotation, just with added a=guards for whitepace
+            //same logic as the quotation, just with added guards for whitepace
             char* wordStart = ptr;
             while (isCharacter(*ptr)) {
                 ptr++;
