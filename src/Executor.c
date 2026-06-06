@@ -60,9 +60,58 @@ int shell_pwd(char** args) {
 }
 
 
-//TODO implementation of cat
 int shell_cat(char** args) {
-    printf("[MOCK BUILTIN] Executing custom cat logic later for streams!\n");
+    char buffer[4096]; // A standard 4KB rolling page buffer
+    ssize_t bytes_read;
+    ssize_t bytes_written;
+
+    // =========================================================================
+    // CASE 1: No arguments provided (e.g., just "cat")
+    // Read directly from standard input stream (0) until User presses Ctrl+D (EOF)
+    // =========================================================================
+    if (args[1] == NULL) {
+        // read() from file descriptor 0 blocks and waits for terminal input automatically
+        while ((bytes_read = read(STDIN_FILENO, buffer, sizeof(buffer))) > 0) {
+            bytes_written = write(STDOUT_FILENO, buffer, bytes_read);
+            if (bytes_written < 0) {
+                perror("myShell: cat write error");
+                return 1;
+            }
+        }
+        if (bytes_read < 0) {
+            perror("myShell: cat read error");
+            return 1;
+        }
+        return 0;
+    }
+
+    // =========================================================================
+    // CASE 2: One or more file arguments provided (e.g., "cat file1.txt file2.txt")
+    // Loop through each argument sequentially
+    // =========================================================================
+    for (int i = 1; args[i] != NULL; i++) {
+        // Open the file in Read-Only mode
+        int fd = open(args[i], O_RDONLY);
+        if (fd < 0) {
+            // Localized runtime error tracking if the file doesn't exist or is protected
+            fprintf(stderr, "myShell: cat: %s: No such file or directory\n", args[i]);
+            continue; // Skip this file and try the next one in the argument array
+        }
+
+        // Stream the file contents through our buffer to standard output (1)
+        while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
+            bytes_written = write(STDOUT_FILENO, buffer, bytes_read);
+            if (bytes_written < 0) {
+                perror("myShell: cat write error");
+                close(fd);
+                return 1;
+            }
+        }
+
+        // Always clean up your file descriptors when finished!
+        close(fd);
+    }
+
     return 0;
 }
 
@@ -70,7 +119,7 @@ int shell_cat(char** args) {
  const BuiltInRegistry builtin_table[] = {
     { "cd",    shell_cd },
     { "pwd",   shell_pwd },
-    { "cat",   shell_cat }
+    { "catt",   shell_cat }
 };
 
 //dynamically calculate the number of available built in commands for later looping through to match the name
