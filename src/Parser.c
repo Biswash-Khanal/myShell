@@ -13,35 +13,35 @@
  * In our case, the priority is kept simple for this first demo. I think it will be very complicated and ill never finish the project if i keep trying to improve before even finishing something.
  * So, my operator priorities are simple
  * Background operator happens at last no matter what, sub commands are not allowed to be background, in other words, only valid place for the background operator to be is at the end of the command. Anywhere else will be error. And basically the entire command before the & operator is now treated as the command to be ran in bacground.
- * 
- * Next is the Pipe operator. As the pipe operator is supposed to just take the output from one of the commands and pass it as the input into another command, its logical that among the remaining operator its the highest priority or the last one to be operated. 
- * 
- * Next, is the redirection operators. I like to call these pseudo operators, as its not really operating anything, all they do is change the default file stream pointers. However, logically, the F pointers are changed in order to redirect the input or the output stream FOR a COMMAND and so it makes sense this needs to happen AFTER a command is decoded. 
- * 
+ *
+ * Next is the Pipe operator. As the pipe operator is supposed to just take the output from one of the commands and pass it as the input into another command, its logical that among the remaining operator its the highest priority or the last one to be operated.
+ *
+ * Next, is the redirection operators. I like to call these pseudo operators, as its not really operating anything, all they do is change the default file stream pointers. However, logically, the F pointers are changed in order to redirect the input or the output stream FOR a COMMAND and so it makes sense this needs to happen AFTER a command is decoded.
+ *
  * Finally, we have the WORDS, these are basically each seperate words. I have decided all commands will be nothing else but an array or strings. the first string being the main command name, or a subprogram and the rest being the arguments for it to function. **im saying I am doing all this but its all the actual practices, ive just toned then down and made them simpler for this simple learning project
- * 
+ *
  * How the parsing works, is basically we can converting the serial token vectors into a tree structure, the tree structure follows the following rules
- * 
+ *
  * for background operator, we make a background node, and store a pointer to the entire rest of the tree within it
- * for pipe operator, we make a PIPE node, a left pointer and a right pointer, which respectively store the pointer to the sub command nodes 
+ * for pipe operator, we make a PIPE node, a left pointer and a right pointer, which respectively store the pointer to the sub command nodes
  * for redirection operator, we make the specific redirection node with a pointer to the node containing the actual command
  * and finally we have the actual command node, that stores a sequence of valid words as its arguments and keeps track of the count as well
- * 
+ *
  * we can also observe from this explanation that this tree will have the command nodes as it's leaves. If present, redirection nodes will contain the command nodes, and so on until the top
- * 
+ *
  * Now, there are a lot of edge cases, error detections, sequence of tokens validation stuff for it to be functioning properly, however given the purpose of the project and not to be sidetracked, ive just plugged the edge cases and problems as they arise instead of thinking through and programming a general solution. So, that is a TODO
- * 
+ *
  * As to how the actual code is working, well we throw in the root node  into the parsing function, which is like an entry point, it will be responsible for starting the process of parsing, and when the process completes it can do some checks to verify everything worked smoothely. It can use the return values of the daughter functions and some other logics to figure out if everything went correctly. It also then passes the tokenvector to the parse_background function
- * 
+ *
  * parse_background function immediately calls the next in line function the parse_pipeline. And as we can see this pattern of calling the other function immediately carrys on until the final function that is the parse_command function. What this allows is at the start of parsing and infact in each step of parsing, RECURSIVELY, each token is always sure to at least visit the correct parsing function once. It will be hard to explain in words and long as well, but ive tried to comment and write the code clean enough so its very clear whats happening.
- * 
- * 
+ *
+ *
  * basically, each level function when gets called, sets up the token into the proper node if the fuction matches the token type, else just returns a level up, allowing next in line function to check if the token type matches, and with this flow, we can also add problem chcking logics which makes sure if the command is valid it parses correctly, or if something is wrong, we can let the mother function parse_input know what went wrong and send error messages. Currently, i have not setup specific error checking and exact error messages, for now it will just display a generic error message if something went wrong.
  */
 
-/**
- * @brief Helper to safely extract a type-safe Token pointer at the current cursor index.
- */
+ /**
+  * @brief Helper to safely extract a type-safe Token pointer at the current cursor index.
+  */
 static Token* get_token_pointer(Vector tokenVector, size_t* cursor) {
     // Defend against an unallocated pointer address or an index tracking out of buffer limits
     if (cursor == NULL || *cursor >= tokenVector.length) {
@@ -62,7 +62,7 @@ static ASTNodeType map_token_to_node(TokenType tok_type) {
     case BACKGROUND:          return NODE_BACKGROUND;
     case WORD:                return NODE_COMMAND;
     case PIPE:                return NODE_PIPE;
-    default:                  exit(EXIT_FAILURE); 
+    default:                  exit(EXIT_FAILURE);
     }
 }
 
@@ -78,7 +78,8 @@ ASTNode* parseInput(Vector tokenVector) {
     // OPTIMIZATION/GUARD: If the grammar finished processing successfully but unparsed tokens 
     // remain in the buffer array (e.g., "ls & grep"), it represents an illegal syntax layout.
     if (cursor < tokenVector.length) {
-        printf("shell: syntax error near unexpected token\n");
+        //this is getting hit with cat <hello.txt >>newFile.txt
+        printf("shell: syntax error near unexpected tokens\n");
         delete_ast_node(root); // Deep free whatever partial tree structures were built to prevent leaks
         return NULL;
     }
@@ -137,53 +138,63 @@ ASTNode* parse_commands(Vector tokenVector, size_t* cursor) {
  * @brief Grammar Rule 3: Binds file descriptors and path names to an active command leaf.
  */
 ASTNode* parse_redirection(Vector tokenVector, size_t* cursor) {
-    // Descend into commands first to gather the core target that might be redirected
-    ASTNode* left_node = parse_commands(tokenVector, cursor);
+    // Lower down into commands first to gather our core baseline execution target
+    ASTNode* current_node = parse_commands(tokenVector, cursor);
 
-    // Get the updated token placement where the command scanning process stopped
-    Token* tok = get_token_pointer(tokenVector, cursor);
+    // Run a loop to accumulate redirection layers as long as they appear back-to-back
+    while (1) {
+        // Query the active token placement where the last step stopped
+        Token* tok = get_token_pointer(tokenVector, cursor);
 
-    // OPTIMIZATION: Early out exit path. If no tokens remain or the current token isn't 
-    // a redirect operator, return our left command block exactly as it was built.
-    if (tok == NULL || (tok->type != REDIRECT_IN && tok->type != REDIRECT_OUT && tok->type != REDIRECT_OUT_APPEND)) {
-        return left_node;
+        // Break out of our looping layer the second we hit the line end or find a non-redirect token
+        if (tok == NULL || (tok->type != REDIRECT_IN &&
+            tok->type != REDIRECT_OUT &&
+            tok->type != REDIRECT_OUT_APPEND)) {
+            break;
+        }
+
+        // SYNTAX GUARD: If a redirect symbol is discovered but our target node is empty
+        // (e.g., "> output.txt"), the grammar rules are broken.
+        if (current_node == NULL) {
+            printf("shell: syntax error near unexpected token '%s'\n", tok->value);
+            return NULL;
+        }
+
+        // Create our new redirection node container matching this specific operator iteration
+        ASTNode* redir_node = create_ast_node(map_token_to_node(tok->type));
+        if (redir_node == NULL) {
+            delete_ast_node(current_node);
+            return NULL;
+        }
+
+        // Parent our accumulated tree layout safely to the left child leg of this new operator node
+        redir_node->left = current_node;
+
+        // Consume the operator token out of the processing queue
+        (*cursor)++;
+
+        // Extract the token that MUST be present directly following the operator symbol
+        Token* file_tok = get_token_pointer(tokenVector, cursor);
+
+        // SYNTAX GUARD: File paths must be valid alpha-string word tokens
+        if (file_tok == NULL || file_tok->type != WORD) {
+            printf("shell: syntax error near unexpected token 'newline'\n");
+            delete_ast_node(redir_node); // Free tree and parent frames safely
+            return NULL;
+        }
+
+        // Duplicate the target string value into our dedicated file path container
+        redir_node->file_path = strdup(file_tok->value);
+
+        // Consume the target filename token to advance our stream position
+        (*cursor)++;
+
+        // SHIFT PERSPECTIVE: This newly wrapped redirection shell becomes the 
+        // target node for any subsequent redirection matches in the next loop pass.
+        current_node = redir_node;
     }
 
-    // SYNTAX GUARD: If we found a redirect operator but left_node is NULL (e.g., "> output.txt"), 
-    // the grammar rule is broken. You cannot apply a redirect operator to a non-existent command.
-    if (left_node == NULL) {
-        printf("shell: syntax error near unexpected token '%s'\n", tok->value);
-        return NULL;
-    }
-
-    // Create our redirection node container matching the current operator type
-    ASTNode* redir_node = create_ast_node(map_token_to_node(tok->type));
-    if (redir_node == NULL) return NULL;
-
-    // Parent the valid left-side command execution tree to this new redirection anchor
-    redir_node->left = left_node;
-
-    // Consume the operator token and push the shared tracker to the next stream slot
-    (*cursor)++;
-
-    // Extract the token that MUST be present directly following the operator symbol
-    Token* file_tok = get_token_pointer(tokenVector, cursor);
-
-    // SYNTAX GUARD: If no tokens follow or the next item is an operator instead of a WORD,
-    // throw a clear compilation syntax warning. Paths must be valid alpha strings.
-    if (file_tok == NULL || file_tok->type != WORD) {
-        printf("shell: syntax error near unexpected token 'newline'\n");
-        delete_ast_node(redir_node); // Free the invalid redirection wrapper alongside its child command
-        return NULL;
-    }
-
-    // Duplicate the target string value into our dedicated file path container
-    redir_node->file_path = strdup(file_tok->value);
-
-    // Consume the target filename token to clean our stream positioning
-    (*cursor)++;
-
-    return redir_node; // Return our completed tree-wrapped redirection node frame
+    return current_node; // Return our completely stacked redirection tree frame
 }
 
 /**
