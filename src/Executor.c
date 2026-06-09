@@ -1,66 +1,71 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>     // For fork(), execvp(), chdir(), getcwd(), close()
+#include <unistd.h>     
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/wait.h>   // For waitpid()
+#include <sys/wait.h>   
+#include <stdbool.h>
 
 #include "Executor.h"
 #include "ASTNode.h"
 #include "BuiltIns.h"
 
 
+void reap_background_zombies() {
+    int status;
+    pid_t died_pid;
+    while ((died_pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        printf("\n[Background Process %d completed]\n", died_pid);
+    }
+}
+
 int exec_builtin(char** args) {
     for (size_t i = 0; i < builtin_count; i++) {
         if (strcmp(args[0], builtin_table[i].name) == 0) {
-            // Execute the local C function inside the child sandbox
             int status = builtin_table[i].handler(args);
-            // Vaporize the child process here so it matches execvp's behavior!
             exit(status);
         }
     }
-    return -1; // Not a built-in, hand control back to try execvp
+    return -1;
 }
 
-
 /**
- * @brief Master entry point. Traverses the tree based on node metadata. Simple implementation with switch statement. Appropriate execution function is called based on the node type
+ * @brief Unified Master entry point and recursive stream coordinator.
  */
-int execute_ast_tree(ASTNode* node) {
+int execute_ast_tree(ASTNode* node, int in_fd, int out_fd) {
     if (node == NULL) {
         return 0;
     }
 
     switch (node->type) {
-        case NODE_COMMAND:
-            return execute_command(node);
-        case NODE_REDIRECT_IN:
-        case NODE_REDIRECT_OUT:
-        case NODE_REDIRECT_APP:
-            return execute_redirection(node);
-        case NODE_PIPE:
-            return execute_pipe(node);
-        case NODE_BACKGROUND:
-            return execute_background(node);
-        default:
-            fprintf(stderr, "myShell Error: Unknown execution node type\n");
-            return -1;
+    case NODE_COMMAND:
+        return execute_command(node, in_fd, out_fd);
+    case NODE_REDIRECT_IN:
+    case NODE_REDIRECT_OUT:
+    case NODE_REDIRECT_APP:
+        return execute_redirection(node, in_fd, out_fd);
+    case NODE_PIPE:
+        return execute_pipe(node, in_fd, out_fd);
+    case NODE_BACKGROUND:
+        return execute_background(node, in_fd, out_fd);
+    default:
+        fprintf(stderr, "myShell Error: Unknown execution node type\n");
+        return -1;
     }
 }
 
 /**
- * @brief Handles terminal expressions. Differentiates built-ins vs external software binaries. 
+ * @brief The ONLY function that executes binaries and handles process forks.
  */
-int execute_command(ASTNode* node) {
+int execute_command(ASTNode* node, int in_fd, int out_fd) {
     if (node == NULL || node->arg_values == NULL || node->arg_values[0] == NULL) {
         return 0;
     }
 
     char* cmd_name = node->arg_values[0];
 
-    // STEP 1: The Parent-Only Exception Backstop
-    // "cd" and "exit" CANNOT fork, so we handle them immediately in the parent.
+    // Parent-only context exceptions
     if (strcmp(cmd_name, "cd") == 0 || strcmp(cmd_name, "exit") == 0) {
         for (size_t i = 0; i < builtin_count; i++) {
             if (strcmp(cmd_name, builtin_table[i].name) == 0) {
@@ -69,7 +74,6 @@ int execute_command(ASTNode* node) {
         }
     }
 
-    // STEP 2: Unified Forking Path (For all externals AND forkable built-ins like cat)
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -79,11 +83,24 @@ int execute_command(ASTNode* node) {
     else if (pid == 0) {
         // ---- CHILD PROCESS SANDBOX ----
 
-        // 1. Try running it as a built-in wrapper. 
-        // If it matches 'cat', it runs and calls exit() inside. It never reaches line 2!
+        if (in_fd != STDIN_FILENO) {
+            if (dup2(in_fd, STDIN_FILENO) < 0) {
+                perror("myShell: dup2 stdin failed");
+                exit(1);
+            }
+            close(in_fd);
+        }
+
+        if (out_fd != STDOUT_FILENO) {
+            if (dup2(out_fd, STDOUT_FILENO) < 0) {
+                perror("myShell: dup2 stdout failed");
+                exit(1);
+            }
+            close(out_fd);
+        }
+
         exec_builtin(node->arg_values);
 
-        // 2. Fallback: If it wasn't a built-in, exec_builtin returned -1, so we try disk binaries.
         if (execvp(cmd_name, node->arg_values) == -1) {
             fprintf(stderr, "myShell: command not found: %s\n", cmd_name);
             exit(127);
@@ -96,96 +113,149 @@ int execute_command(ASTNode* node) {
         if (WIFEXITED(status)) {
             return WEXITSTATUS(status);
         }
+        else if (WIFSIGNALED(status)) {
+            return 128 + WTERMSIG(status);
+        }
     }
 
     return 0;
 }
 
 /**
- * @brief Handles output/input tracking manipulations with multi-layered traversal support.
+ * @brief Stream Decorator: Passes the updated fds straight into the unified recursion signature.
  */
-int execute_redirection(ASTNode* node) {
+int execute_redirection(ASTNode* node, int in_fd, int out_fd) {
     if (node == NULL) return 0;
+
+    int fd = -1;
+
+    if (node->type == NODE_REDIRECT_OUT) {
+        fd = open(node->file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd < 0) {
+            fprintf(stderr, "myShell: %s: %s\n", node->file_path, strerror(errno));
+            return 1;
+        }
+        out_fd = fd;
+    }
+    else if (node->type == NODE_REDIRECT_APP) {
+        fd = open(node->file_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (fd < 0) {
+            fprintf(stderr, "myShell: %s: %s\n", node->file_path, strerror(errno));
+            return 1;
+        }
+        out_fd = fd;
+    }
+    else if (node->type == NODE_REDIRECT_IN) {
+        fd = open(node->file_path, O_RDONLY);
+        if (fd < 0) {
+            fprintf(stderr, "myShell: %s: %s\n", node->file_path, strerror(errno));
+            return 1;
+        }
+        in_fd = fd;
+    }
+
+    // Direct recursion using unified signature!
+    int resultStatus = execute_ast_tree(node->left, in_fd, out_fd);
+
+    if (fd >= 0) {
+        close(fd);
+    }
+
+    return resultStatus;
+}
+
+/**
+ * @brief Stream Decorator: Allocates a kernel pipe and forks pipeline branches using the unified signature.
+ */
+int execute_pipe(ASTNode* node, int in_fd, int out_fd) {
+    if (node == NULL) return 0;
+
+    int pipeEnds[2];
+    if (pipe(pipeEnds) != 0) {
+        perror("myShell: pipe creation failed");
+        return 1;
+    }
+
+    pid_t pid1 = fork();
+    if (pid1 < 0) {
+        perror("myShell: pipe left fork failed");
+        close(pipeEnds[0]); close(pipeEnds[1]);
+        return 1;
+    }
+
+    if (pid1 == 0) {
+        close(pipeEnds[0]);
+        // Call unified function recursively
+        execute_ast_tree(node->left, in_fd, pipeEnds[1]);
+        exit(0);
+    }
+
+    pid_t pid2 = fork();
+    if (pid2 < 0) {
+        perror("myShell: pipe right fork failed");
+        close(pipeEnds[0]); close(pipeEnds[1]);
+        return 1;
+    }
+
+    if (pid2 == 0) {
+        close(pipeEnds[1]);
+        // Call unified function recursively
+        execute_ast_tree(node->right, pipeEnds[0], out_fd);
+        exit(0);
+    }
+
+    close(pipeEnds[0]);
+    close(pipeEnds[1]);
+
+    int status1, status2;
+    waitpid(pid1, &status1, 0);
+    waitpid(pid2, &status2, 0);
+
+    return WIFEXITED(status2) ? WEXITSTATUS(status2) : 0;
+}
+
+/**
+ * @brief Process Decorator: Spawns the async track using the unified signature.
+ */
+int execute_background(ASTNode* node, int in_fd, int out_fd) {
+    // 1. Snapshot independent copies right here in the parent frame 
+    // if they aren't the standard system defaults.
+    int bg_in = in_fd;
+    int bg_out = out_fd;
+
+    if (in_fd != STDIN_FILENO) {
+        bg_in = dup(in_fd);
+    }
+    if (out_fd != STDOUT_FILENO) {
+        bg_out = dup(out_fd);
+    }
 
     pid_t pid = fork();
 
     if (pid < 0) {
-        perror("myShell: redirection fork failed");
+        perror("myShell: background fork failed");
+        if (bg_in != in_fd) close(bg_in);
+        if (bg_out != out_fd) close(bg_out);
         return 1;
     }
+    else if (pid == 0) {
+        // ---- CHILD BACKGROUND PROCESS ----
+        // The child now uses its completely isolated, guaranteed stream copies!
+        int status = execute_ast_tree(node->left, bg_in, bg_out);
 
-    if (pid == 0) {
-        // ---- CHILD PROCESS SANDBOX ----
-        ASTNode* cmd_node = node;
+        // Clean up our local copies right before dying
+        if (bg_in != STDIN_FILENO) close(bg_in);
+        if (bg_out != STDOUT_FILENO) close(bg_out);
 
-        while (cmd_node->type == NODE_REDIRECT_IN ||
-            cmd_node->type == NODE_REDIRECT_OUT ||
-            cmd_node->type == NODE_REDIRECT_APP) {
-
-            int fd = -1;
-            if (cmd_node->type == NODE_REDIRECT_OUT) {
-                fd = open(cmd_node->file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                dup2(fd, STDOUT_FILENO);
-            }
-            else if (cmd_node->type == NODE_REDIRECT_APP) {
-                fd = open(cmd_node->file_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
-                dup2(fd, STDOUT_FILENO);
-            }
-            else if (cmd_node->type == NODE_REDIRECT_IN) {
-                fd = open(cmd_node->file_path, O_RDONLY);
-                dup2(fd, STDIN_FILENO);
-            }
-
-            if (fd < 0) {
-                fprintf(stderr, "myShell: %s: %s\n", cmd_node->file_path, strerror(errno));
-                exit(1);
-            }
-            close(fd);
-
-            // Keep sliding down left branches
-            cmd_node = cmd_node->left;
-        }
-
-        // Out of the loop! Run the command payload inside the rewired child context
-        if (cmd_node != NULL && cmd_node->type == NODE_COMMAND) {
-            // Try local built-in wrapper first
-            exec_builtin(cmd_node->arg_values);
-
-            // Fallback to external disk binaries
-            execvp(cmd_node->arg_values[0], cmd_node->arg_values);
-
-            fprintf(stderr, "myShell: command not found: %s\n", cmd_node->arg_values[0]);
-            exit(127);
-        }
-
-        // Safety exit path if a tree terminates without a trailing command leaf
-        exit(0);
+        exit(status);
     }
     else {
-        // ---- REAL PARENT PROCESS CONTEXT ----
-        // This is now properly aligned outside the if (pid == 0) boundary!
-        int status;
-        waitpid(pid, &status, 0);
-        return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+        // ---- MAIN FOREGROUND PARENT SHELL ----
+        // If we created duplicates in the parent, close them on the foreground tracking frame
+        if (bg_in != in_fd) close(bg_in);
+        if (bg_out != out_fd) close(bg_out);
+
+        printf("[1] %d\n", pid);
+        return 0;
     }
 }
-
-/**
- * @brief Handles multi-stage sequential stream processing.
- */
- int execute_pipe(ASTNode* node) {
-    printf("[DEBUG] Pipeline operator node hit. Traversing branches...\n");
-    
-    // For right now, it runs them sequentially so you can see your commands parse out
-    execute_ast_tree(node->left);
-    execute_ast_tree(node->right);
-    return 0;
-}
-
-/**
- * @brief Asynchronously isolates child branches.
- */
- int execute_background(ASTNode* node) {
-    printf("[DEBUG] Background operational envelope hit.\n");
-    return execute_ast_tree(node->left);
-} 

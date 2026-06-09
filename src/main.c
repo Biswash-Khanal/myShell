@@ -24,6 +24,7 @@ int main(void) {
 
     // the main loop. Each loop: gets the line from terminal, check for errors, lexes and prints the results
     while (1) {
+        reap_background_zombies();
         // 1. Shell Prompt
         char promptBuffer[1024];
         if (getcwd(promptBuffer, sizeof(promptBuffer)) == NULL) {
@@ -66,7 +67,7 @@ int main(void) {
                 printf("--------------------------------------\n\n");
 
                 // Future step: execute_ast_tree(root);
-                execute_ast_tree(root);
+                execute_ast_tree(root, STDIN_FILENO, STDOUT_FILENO);
                 // Deeply clear all allocated heap structures inside this tree
                 delete_ast_node(root);
                 root = NULL;
