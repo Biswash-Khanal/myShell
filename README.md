@@ -27,7 +27,7 @@ into a structured tree according to the operator precedence and associativity wh
 and execute different functions based on the structure of the command
 
 
-//latest
+//third update
 part 2 is complete, the parser is working properly, i have made a grammar for the command structure and put conditional branches to return error if some invalid command is entered. Proper error handling is still TODO in the later version. anyways, any command converted to the token vector by the lexer, is now converted into a AST tree structure by the parser. for this. the & operator has the higheest priority and ive made the program with some assumptions
 some assumptions are
     only 1 & is allowed and that too at the end of the entire command. 
@@ -36,7 +36,10 @@ some assumptions are
 The AST node struct is not optimized as in it contains all the properties for any type of node. can be optimized using unions to make it only take the space it uses
 The invalid command console logs are very general, TODO: make it describe the problem accurately and in more detail
 
+latest update
+the first version of the project is complete. Instead of rough documentation of the program like previous ones, ill now be clearing this file and creating a well documented codebase with proper comments in the code itself, while the readme will contain the high level details, to dos and screenshots.
 
 -first updated may 19th 2026
 -second updated may 27th 2026
--latest updated may 31th 2026
+-third updated may 31th 2026
+-latest updated june 10th 2026

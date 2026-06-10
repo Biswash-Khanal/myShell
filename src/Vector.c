@@ -7,11 +7,7 @@
 #include "MemoryGuard.h"
 
 
-/**
- * @brief Helper function to expand the capacity when the data in is bigger than current capacity. Not declared in Header as I dont want to make this function callable by the user. Instead its only used for internal purpose.
- *
- *
- */
+
 static void expandCapacity(Vector* self, size_t n) {
 
     if (n >= self->capacity) {
@@ -24,14 +20,12 @@ static void expandCapacity(Vector* self, size_t n) {
 }
 
 Vector vec_createVector(size_t itemsize, size_t capacity) {
-    //stack variable created and initialized
     Vector newVector = {
         .itemSize = itemsize,
         .length = 0,
         .capacity = capacity,
         .buffer = calloc(capacity, itemsize) };
     MEMORY_GUARD(newVector.buffer, __FILE__, __LINE__);
-    //returned by value
     return newVector;
 }
 

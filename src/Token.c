@@ -16,7 +16,7 @@ static char* OP_BACKGROUND = "&";
 
 
 Token token_create_word(char* string) {
-    //create a new stack variable Token and initialize it to type Word and the value to a heap copy of the string
+
     Token newWordToken = {
         .type = WORD,
         .value = strdup(string)
@@ -54,19 +54,19 @@ void delete_token(Token* token) {
         token->value = NULL;
     }
     else {
-        //token value are not heap memory pointers, so just null them without freeing
+
         token->value = NULL;
 
     }
 
 }
 
-void freeTokenVector(Vector* tokenVector) {
+voidfreeTokenVector(Vector* tokenVector) {
 
-    //set a pointer to the start of the buffer
+
     Token* ptr = vec_getItemAddress(tokenVector, 0);
 
-    //loop through each token and call its free function
+
     for (size_t i = 0;i < tokenVector->length;i++) {
 
         delete_token(ptr);
@@ -74,7 +74,7 @@ void freeTokenVector(Vector* tokenVector) {
         ptr++;
     }
 
-    //now that individual tokens inside the buffer are freed, we can call he free vector function that frees the buffer and nulls the Vector struct
+
     vec_deleteVector(tokenVector);
 
 }
@@ -86,19 +86,19 @@ void printVectorBuffer(const Vector* vector) {
         return;
     }
 
-    // Cast the start of the raw void* buffer to a structural Token pointer
+
     Token* ptr = vec_getItemAddress((Vector*)vector, 0);
 
     printf("Vector Length = %lu: [ ", vector->length);
 
     for (size_t i = 0; i < vector->length; i++) {
-        // Use clean enum labels instead of raw integers (0, 1, 2...)
+
         switch (ptr->type) {
         case WORD:
             printf("WORD(\"%s\")", ptr->value);
             break;
         case REDIRECT_IN:
-            printf("REDIRECT_IN"); // Operators don't inherently need a string value printed
+            printf("REDIRECT_IN"); 
             break;
         case REDIRECT_OUT:
             printf("REDIRECT_OUT");
@@ -117,7 +117,7 @@ void printVectorBuffer(const Vector* vector) {
             break;
         }
 
-        // Structural formatting spacer
+
         if (i < vector->length - 1) {
             printf(" -> ");
         }

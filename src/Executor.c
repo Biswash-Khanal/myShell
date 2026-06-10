@@ -30,9 +30,7 @@ int exec_builtin(char** args) {
     return -1;
 }
 
-/**
- * @brief Unified Master entry point and recursive stream coordinator.
- */
+
 int execute_ast_tree(ASTNode* node, int in_fd, int out_fd) {
     if (node == NULL) {
         return 0;
@@ -55,9 +53,7 @@ int execute_ast_tree(ASTNode* node, int in_fd, int out_fd) {
     }
 }
 
-/**
- * @brief The ONLY function that executes binaries and handles process forks.
- */
+
 int execute_command(ASTNode* node, int in_fd, int out_fd) {
     if (node == NULL || node->arg_values == NULL || node->arg_values[0] == NULL) {
         return 0;
@@ -65,7 +61,6 @@ int execute_command(ASTNode* node, int in_fd, int out_fd) {
 
     char* cmd_name = node->arg_values[0];
 
-    // Parent-only context exceptions
     if (strcmp(cmd_name, "cd") == 0 || strcmp(cmd_name, "exit") == 0) {
         for (size_t i = 0; i < builtin_count; i++) {
             if (strcmp(cmd_name, builtin_table[i].name) == 0) {
@@ -81,7 +76,6 @@ int execute_command(ASTNode* node, int in_fd, int out_fd) {
         return 1;
     }
     else if (pid == 0) {
-        // ---- CHILD PROCESS SANDBOX ----
 
         if (in_fd != STDIN_FILENO) {
             if (dup2(in_fd, STDIN_FILENO) < 0) {
@@ -107,7 +101,6 @@ int execute_command(ASTNode* node, int in_fd, int out_fd) {
         }
     }
     else {
-        // ---- PARENT PROCESS ----
         int status;
         waitpid(pid, &status, 0);
         if (WIFEXITED(status)) {
@@ -121,9 +114,7 @@ int execute_command(ASTNode* node, int in_fd, int out_fd) {
     return 0;
 }
 
-/**
- * @brief Stream Decorator: Passes the updated fds straight into the unified recursion signature.
- */
+
 int execute_redirection(ASTNode* node, int in_fd, int out_fd) {
     if (node == NULL) return 0;
 
@@ -154,7 +145,6 @@ int execute_redirection(ASTNode* node, int in_fd, int out_fd) {
         in_fd = fd;
     }
 
-    // Direct recursion using unified signature!
     int resultStatus = execute_ast_tree(node->left, in_fd, out_fd);
 
     if (fd >= 0) {
@@ -164,9 +154,7 @@ int execute_redirection(ASTNode* node, int in_fd, int out_fd) {
     return resultStatus;
 }
 
-/**
- * @brief Stream Decorator: Allocates a kernel pipe and forks pipeline branches using the unified signature.
- */
+
 int execute_pipe(ASTNode* node, int in_fd, int out_fd) {
     if (node == NULL) return 0;
 
@@ -214,9 +202,7 @@ int execute_pipe(ASTNode* node, int in_fd, int out_fd) {
     return WIFEXITED(status2) ? WEXITSTATUS(status2) : 0;
 }
 
-/**
- * @brief Process Decorator: Spawns the async track using the unified signature.
- */
+
 int execute_background(ASTNode* node, int in_fd, int out_fd) {
     // 1. Snapshot independent copies right here in the parent frame 
     // if they aren't the standard system defaults.
@@ -239,8 +225,7 @@ int execute_background(ASTNode* node, int in_fd, int out_fd) {
         return 1;
     }
     else if (pid == 0) {
-        // ---- CHILD BACKGROUND PROCESS ----
-        // The child now uses its completely isolated, guaranteed stream copies!
+ 
         int status = execute_ast_tree(node->left, bg_in, bg_out);
 
         // Clean up our local copies right before dying
@@ -250,8 +235,7 @@ int execute_background(ASTNode* node, int in_fd, int out_fd) {
         exit(status);
     }
     else {
-        // ---- MAIN FOREGROUND PARENT SHELL ----
-        // If we created duplicates in the parent, close them on the foreground tracking frame
+
         if (bg_in != in_fd) close(bg_in);
         if (bg_out != out_fd) close(bg_out);
 

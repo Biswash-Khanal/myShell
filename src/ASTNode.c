@@ -7,16 +7,12 @@
 
 ASTNode* create_ast_node(ASTNodeType nodeType) {
 
-    ASTNode* newNode = malloc(sizeof(*newNode));
-    // if the pointer returned by malloc is null, memory was not allocated appropriately. return to signal error, or exit the program
-    if (newNode == NULL) {
+    ASTNode* newNode = malloc(sizeof(*newNode));    if (newNode == NULL) {
         return NULL;
     }
 
-    //set the type to whatever was passed
     newNode->type = nodeType;
 
-    //initialize as 0 or null for everything else
     newNode->arg_count = 0;
 
     newNode->right = NULL;
@@ -33,7 +29,6 @@ ASTNode* create_ast_node(ASTNodeType nodeType) {
 }
 
 int delete_ast_node(ASTNode* node) {
-    //if node is null already, assume its already been freed and return safe
     if (node == NULL) {
         return 1;
     }
@@ -49,15 +44,12 @@ int delete_ast_node(ASTNode* node) {
     }
     node->arg_count = 0;
 
-    //free the file path, we can just call recursively to delete the child cmd node
     free(node->file_path);
     node->file_path = NULL;
 
-    //free the child cmd node and null the pointer
     delete_ast_node(node->child_cmd);
     node->child_cmd = NULL;
 
-    //recursively free the left and right node and then null the pointer
     delete_ast_node(node->left);
     node->left = NULL;
     delete_ast_node(node->right);
@@ -74,12 +66,11 @@ void print_ast_tree(const ASTNode* node, int depth) {
         return;
     }
 
-    // 1. Print indentation matching the current depth hierarchy
     for (int i = 0; i < depth; i++) {
-        printf("    "); // 4 spaces per depth layer
+        printf("    "); 
     }
 
-    // 2. Identify and display the node data based on its structural type
+    
     switch (node->type) {
     case NODE_COMMAND:
         printf("[COMMAND] Args: ");
@@ -119,13 +110,13 @@ void print_ast_tree(const ASTNode* node, int depth) {
         break;
     }
 
-    // 3. Recursively print structural dependencies further down the tree
-    // If a node has an internal child command payload (like a subshell or specific wrapper)
+
+
     if (node->child_cmd != NULL) {
         print_ast_tree(node->child_cmd, depth + 1);
     }
 
-    // Step down left and right child branches
+
     print_ast_tree(node->left, depth + 1);
     print_ast_tree(node->right, depth + 1);
 }
