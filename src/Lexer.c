@@ -4,8 +4,13 @@
 #include "Vector.h"
 #include "Token.h"
 
-
-int isOperator(char inputCharacter) {
+/**
+ * @brief Helper function that classifies if a character is an operator or not.
+ * 
+ * @param inputCharacter The character to be tested.
+ * @return int Return 1 if the character is an operator, 0 if its not.
+ */
+static int isOperator(char inputCharacter) {
     if (inputCharacter == '|' || inputCharacter == '<' || inputCharacter == '>' || inputCharacter == '&') {
         return 1;
     }
@@ -14,8 +19,13 @@ int isOperator(char inputCharacter) {
     }
 }
 
-
-int isCharacter(char inputCharacter) {
+/**
+ * @brief Helper function that classifies if a character is a valid WORD character i.e not OPERATOR, not WHITESPACE, not '\0', not "" or ''.
+ * 
+ * @param inputCharacter The character to be tested.
+ * @return int Returns 1 if the character is valid, 0 if not.
+ */
+static int isCharacter(char inputCharacter) {
     // A character belongs to a regular word ONLY if it's:
     // 1. Not whitespace
     // 2. Not the string null terminator
@@ -24,7 +34,7 @@ int isCharacter(char inputCharacter) {
     if (!isspace((unsigned char)inputCharacter) &&
         inputCharacter != '\0' &&
         inputCharacter != '"' &&
-        inputCharacter != '\'' && // CRITICAL FIX: Single quote also breaks a regular word boundary
+        inputCharacter != '\'' &&
         isOperator(inputCharacter) != 1) {
         return 1;
     }
@@ -36,8 +46,8 @@ int isCharacter(char inputCharacter) {
 
 int lexer(char* inputstring, Vector* vector) {
 
-    char* ptr = inputstring;
-    Token newToken;
+    char* ptr = inputstring;            //Store the pointer on a shorter easier to use variable ptr.
+    Token newToken;                     //We create a new Token variable, that will be used in each iteration 
 
 
     while (*ptr != '\0' && *ptr != '\n') {
